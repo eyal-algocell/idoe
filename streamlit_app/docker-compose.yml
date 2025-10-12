@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  streamlit-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idoe-streamlit-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./src:/app/src
+      - ./app.py:/app/app.py
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
