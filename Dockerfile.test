@@ -1,0 +1,37 @@
+# Use Python 3.11 slim image as base
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code and tests
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY pytest.ini .
+
+# Create test results directory
+RUN mkdir -p /app/test-results
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Run tests with coverage and save results
+CMD ["sh", "-c", "pytest tests/ --cov=src --cov-report=html:/app/test-results/coverage --cov-report=term --cov-report=json:/app/test-results/coverage.json --junit-xml=/app/test-results/junit.xml -v && echo 'Tests completed successfully' > /app/test-results/status.txt"]

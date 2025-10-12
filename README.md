@@ -86,16 +86,36 @@ subject to design validity and biological feasibility.
 
 ## 🧪 Implementation Guide
 
-### 🔧 Requirements
-
-Create a `requirements.txt` file with:
+### 📁 Project Structure
 
 ```
-numpy
-pulp
+idoe/
+├── src/
+│   ├── __init__.py         # Package initialization
+│   ├── config.py           # Configuration and constants
+│   ├── models.py           # Data models (StageAssignment, Experiment, OptimizationResult)
+│   ├── optimizer.py        # MILP optimizer implementation
+│   └── main.py             # Main entry point
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py         # Pytest configuration
+│   ├── test_config.py      # Configuration tests
+│   ├── test_models.py      # Model tests
+│   ├── test_optimizer.py   # Optimizer tests
+│   └── test_e2e.py         # End-to-end tests
+├── Dockerfile              # Docker image for application
+├── Dockerfile.test         # Docker image for running tests
+├── docker-compose.yml      # Docker Compose configuration
+├── requirements.txt        # Python dependencies
+├── pytest.ini              # Pytest configuration
+└── README.md               # This file
 ```
 
-Then install dependencies with:
+---
+
+### 🔧 Local Installation
+
+Install dependencies with:
 
 ```bash
 pip install -r requirements.txt
@@ -105,46 +125,99 @@ pip install -r requirements.txt
 
 ### 🚀 How to Run
 
-1. **Define the Design Space**
+#### Option 1: Run Locally
 
-   Modify the `factor_values` array in the notebook:
+```bash
+# Run with default parameters
+python -m src.main
 
-   ```python
-   factor_values = np.array([
-       [0.135, 31],
-       [0.16, 31],
-       [0.11, 31],
-       [0.1225, 29],
-       # ...
-   ])
-   ```
+# Run with output file
+python -m src.main --output results.json
 
-   Each entry represents a `(μ, temperature)` combination.
+# Run with verbose solver output
+python -m src.main --verbose
+```
 
-2. **Set Experiment Parameters**
+#### Option 2: Run with Docker
 
-   ```python
-   nStages = 3  # e.g., adaptation, log, induction
-   delta_f_max_mu   = 0.03
-   delta_f_max_temp = 2
-   delta_f_min_mu   = 0.01
-   delta_f_min_temp = 1
-   ```
+```bash
+# Build and run the application
+docker-compose up app
 
-3. **Define Stage Weights and Thresholds**
+# Results will be saved to ./output/results.json
+```
 
-   ```python
-   Sk = [1, 1.5, 2]  # Stage costs
-   tj = [3, 2, 1]    # Experiment allowances
-   ```
+---
 
-4. **Run the Optimization**
+### 🧪 Running Tests
 
-   Execute all cells in the Jupyter notebook.
-   The output will include:
+#### Option 1: Run Tests Locally
 
-   * Optimized stage combinations per experiment
-   * A 2-factor Doehlert design visualization chart
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage report
+pytest tests/ --cov=src --cov-report=html --cov-report=term
+
+# Run specific test file
+pytest tests/test_optimizer.py -v
+
+# Run end-to-end tests only
+pytest tests/test_e2e.py -v
+```
+
+#### Option 2: Run Tests with Docker
+
+```bash
+# Build and run tests in container
+docker-compose up test
+
+# Test results will be saved to:
+# - ./test-results/junit.xml (test results)
+# - ./test-results/coverage.json (coverage data)
+# - ./test-results/coverage/ (HTML coverage report)
+# - ./test-results/status.txt (completion status)
+```
+
+#### Option 3: Run Tests Manually with Docker
+
+```bash
+# Build test image
+docker build -t idoe-test -f Dockerfile.test .
+
+# Run tests and save results
+docker run --rm -v $(pwd)/test-results:/app/test-results idoe-test
+```
+
+---
+
+### ⚙️ Configuration
+
+The optimizer can be customized by modifying [src/config.py](src/config.py):
+
+**Factor Values:**
+```python
+FACTOR_VALUES = np.array([
+    [0.135, 31.0],   # mu_set, temperature
+    [0.16, 31.0],
+    # ... more combinations
+])
+```
+
+**Stage Constraints:**
+```python
+NUM_STAGES = 3                  # Number of stages per experiment
+DELTA_F_MAX_MU = 0.03          # Maximum mu_set change between stages
+DELTA_F_MAX_TEMP = 2           # Maximum temperature change (°C)
+DELTA_F_MIN_MU = 0.01          # Minimum mu_set change required
+DELTA_F_MIN_TEMP = 1           # Minimum temperature change required
+```
+
+**Stage Weights:**
+```python
+STAGE_WEIGHTS = {1: 1, 2: 1, 3: 1}  # Equal weights for all stages
+```
 
 ---
 

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Application service - runs the iDoE optimizer
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idoe-app
+    volumes:
+      - ./output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  # Test service - runs all tests and saves results
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: idoe-test
+    volumes:
+      - ./test-results:/app/test-results
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  # Reports service - generates plots and tables
+  reports:
+    build:
+      context: .
+      dockerfile: Dockerfile.reports
+    container_name: idoe-reports
+    volumes:
+      - ./reports:/app/reports
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MPLBACKEND=Agg
