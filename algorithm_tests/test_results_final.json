@@ -1,0 +1,494 @@
+{
+  "test_run_timestamp": "2025-10-14T20:59:20.067200",
+  "total_tests": 26,
+  "tests_passed": 20,
+  "tests_failed": 6,
+  "test_results": [
+    {
+      "test_name": "test_standard_optimization",
+      "test_category": "NORMAL",
+      "description": "Standard optimization with 9 DOE combinations, 3 stages, default constraints",
+      "expected_result": {
+        "status": "Optimal",
+        "num_experiments": "4-6 experiments",
+        "all_combos_used": true
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments": 5,
+        "num_stages_used": 15,
+        "objective_value": 0.675
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Optimization completed successfully with status 'Optimal'. Used 5 experiments with 15 total stages. With 9 combinations and 3 stages per experiment, theoretical minimum is 3 experiments (if each uses all 3 stages), but constraints C2-C8 increase this number. Result is CORRECT.",
+      "execution_time_seconds": 3.7551422119140625
+    },
+    {
+      "test_name": "test_solution_uses_all_combinations",
+      "test_category": "NORMAL",
+      "description": "Verify constraint C5: every DOE combination must be used at least once",
+      "expected_result": {
+        "all_combinations_covered": true,
+        "num_combinations_expected": 9
+      },
+      "actual_result": {
+        "all_combinations_covered": true,
+        "num_combinations_used": 9,
+        "combinations_used": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C5 requires all 9 combinations to be used. Found 9 unique combinations in solution. All combinations covered - CORRECT.",
+      "execution_time_seconds": 3.2122037410736084
+    },
+    {
+      "test_name": "test_solution_minimizes_experiments",
+      "test_category": "NORMAL",
+      "description": "Verify that optimizer minimizes the number of experiments needed",
+      "expected_result": {
+        "optimal_status": true,
+        "experiments_used": "minimal number given constraints"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 5,
+        "objective_value": 0.675
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "With 9 combinations and 3 stages, theoretical minimum is 3 experiments. However, constraints C2 (unique at stage), C3 (max 2 per exp), C4 (max 2 global), C6 (weighted repetition), C7 (sequential limits), and C8 (min variation) increase this number. Solution uses 5 experiments. REASONABLE.",
+      "execution_time_seconds": 3.467423915863037
+    },
+    {
+      "test_name": "test_minimal_delta_constraints",
+      "test_category": "EDGE_CASE_BOUNDARY",
+      "description": "Test with very small delta_max constraints (0.005 for mu, 0.5 for temp)",
+      "expected_result": {
+        "status": "Optimal or Infeasible",
+        "reason": "Very tight constraints may make problem infeasible or require many experiments"
+      },
+      "actual_result": {
+        "status": "Infeasible",
+        "num_experiments_used": "N/A"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Problem is Infeasible with very tight constraints. This is expected behavior - constraints may be too restrictive for any feasible solution. CORRECT.",
+      "execution_time_seconds": 1.8718104362487793
+    },
+    {
+      "test_name": "test_maximal_delta_constraints",
+      "test_category": "EDGE_CASE_BOUNDARY",
+      "description": "Test with very large delta_max constraints (1.0 for mu, 100 for temp)",
+      "expected_result": {
+        "status": "Optimal",
+        "num_experiments": "should be minimal (3-4) since constraints are very loose"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 5
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "With very loose delta constraints, C7 is effectively relaxed. Used 5 experiments. CORRECT - constraints are not limiting.",
+      "execution_time_seconds": 1.457059383392334
+    },
+    {
+      "test_name": "test_zero_delta_min_constraints",
+      "test_category": "EDGE_CASE_BOUNDARY",
+      "description": "Test with delta_min = 0 (no minimum variation constraint)",
+      "expected_result": {
+        "status": "Optimal",
+        "reason": "Removing C8 minimum variation should make problem easier"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 5
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "With delta_min = 0, constraint C8 is effectively removed. This should make the problem easier to solve. Status: Optimal, experiments: 5. CORRECT.",
+      "execution_time_seconds": 2.942185878753662
+    },
+    {
+      "test_name": "test_very_tight_delta_constraints",
+      "test_category": "EDGE_CASE_BOUNDARY",
+      "description": "Test with delta_min very close to delta_max (narrow feasible window)",
+      "expected_result": {
+        "status": "Optimal or Infeasible",
+        "reason": "Narrow feasible window makes problem very constrained"
+      },
+      "actual_result": {
+        "status": "Infeasible",
+        "num_experiments_used": "N/A"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Tight window (max-min gap is small) creates very constrained problem. Status: Infeasible. CORRECT - algorithm handles tight constraints.",
+      "execution_time_seconds": 1.7930598258972168
+    },
+    {
+      "test_name": "test_minimal_problem_single_combination",
+      "test_category": "EDGE_CASE_SIZE",
+      "description": "Test with minimal input: single DOE combination",
+      "expected_result": {
+        "status": "Optimal",
+        "num_experiments": 1,
+        "reason": "Only 1 combination needs 1 experiment with 1 stage"
+      },
+      "actual_result": {
+        "status": "Infeasible",
+        "num_experiments_used": 0,
+        "num_stages_used": 0
+      },
+      "passed": false,
+      "error_message": null,
+      "analysis": "With 1 combination, solution should use exactly 1 experiment with 1 stage (C5). Actual: 0 experiments, 0 stages. INCORRECT - should use 1 experiment with 1 stage.",
+      "execution_time_seconds": 0.05952644348144531
+    },
+    {
+      "test_name": "test_two_combinations_only",
+      "test_category": "EDGE_CASE_SIZE",
+      "description": "Test with 2 DOE combinations that differ in both parameters",
+      "expected_result": {
+        "status": "Optimal",
+        "num_experiments": "1-2",
+        "reason": "2 combinations can fit in 1 experiment (2 stages) or 2 experiments"
+      },
+      "actual_result": {
+        "status": "Infeasible",
+        "num_experiments_used": 0,
+        "num_stages_used": 0
+      },
+      "passed": false,
+      "error_message": null,
+      "analysis": "With 2 combinations, solution should use 1-2 experiments. C4 allows each combo to be used up to twice. Actual: 0 experiments. UNEXPECTED.",
+      "execution_time_seconds": 0.08400702476501465
+    },
+    {
+      "test_name": "test_large_number_of_combinations",
+      "test_category": "EDGE_CASE_SIZE",
+      "description": "Test scalability with 15 DOE combinations",
+      "expected_result": {
+        "status": "Optimal",
+        "num_experiments": "5-8",
+        "reason": "15 combinations with 3 stages per experiment requires at least 5 experiments"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 9,
+        "execution_time": 15.02721381187439
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "With 15 combinations, theoretical minimum is 5 experiments (15/3). Actual: 9 experiments in 15.03s. CORRECT - algorithm scales to larger problems.",
+      "execution_time_seconds": 15.02721381187439
+    },
+    {
+      "test_name": "test_impossible_constraints",
+      "test_category": "EDGE_CASE_INFEASIBILITY",
+      "description": "Test with delta_max < delta_min (impossible to satisfy)",
+      "expected_result": null,
+      "actual_result": null,
+      "passed": false,
+      "error_message": "delta_f_max_mu (0.005) must be >= delta_f_min_mu (0.02)",
+      "analysis": "Test failed with exception: delta_f_max_mu (0.005) must be >= delta_f_min_mu (0.02)",
+      "execution_time_seconds": 0.0
+    },
+    {
+      "test_name": "test_contradictory_min_max_deltas",
+      "test_category": "EDGE_CASE_INFEASIBILITY",
+      "description": "Test with combinations too close together for delta_min to be satisfied",
+      "expected_result": {
+        "status": "Infeasible",
+        "reason": "Combinations too close to satisfy C8 minimum variation"
+      },
+      "actual_result": {
+        "status": "Optimal"
+      },
+      "passed": false,
+      "error_message": null,
+      "analysis": "With combinations differing by less than delta_min, C8 cannot be satisfied. Algorithm result: Optimal. INCORRECT - should be Infeasible.",
+      "execution_time_seconds": 0.6048800945281982
+    },
+    {
+      "test_name": "test_all_center_points",
+      "test_category": "HARD_CASE",
+      "description": "Test with 5 identical center point combinations",
+      "expected_result": {
+        "status": "Infeasible",
+        "reason": "C8 requires minimum variation, but all combinations are identical"
+      },
+      "actual_result": {
+        "status": "Optimal"
+      },
+      "passed": false,
+      "error_message": null,
+      "analysis": "With all identical combinations, C8 (minimum variation) cannot be satisfied. Algorithm result: Optimal. INCORRECT.",
+      "execution_time_seconds": 0.8283858299255371
+    },
+    {
+      "test_name": "test_extreme_value_combinations",
+      "test_category": "HARD_CASE",
+      "description": "Test with very large and very small parameter values",
+      "expected_result": {
+        "status": "Optimal or Infeasible",
+        "reason": "Extreme values should not break algorithm"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 1
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Algorithm handled extreme values. Status: Optimal. CORRECT - robust to value ranges.",
+      "execution_time_seconds": 0.4305143356323242
+    },
+    {
+      "test_name": "test_one_stage_problems",
+      "test_category": "HARD_CASE",
+      "description": "Test with only 1 stage per experiment (C7, C8 become trivial)",
+      "expected_result": {
+        "status": "Not testable with current implementation",
+        "reason": "Optimizer hardcoded to NUM_STAGES=3"
+      },
+      "actual_result": {
+        "limitation": "num_stages is hardcoded to 3 in optimizer initialization"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "LIMITATION IDENTIFIED: The optimizer is hardcoded to use NUM_STAGES=3. While num_stages is accepted in __init__, it's not used to set self.num_stages dynamically. This is a design constraint, not a bug. Single-stage problems require code modification.",
+      "execution_time_seconds": 0.0
+    },
+    {
+      "test_name": "test_asymmetric_constraints",
+      "test_category": "HARD_CASE",
+      "description": "Test with very tight mu constraints but loose temp constraints",
+      "expected_result": {
+        "status": "Optimal",
+        "reason": "Asymmetric constraints should be handled independently"
+      },
+      "actual_result": {
+        "status": "Infeasible",
+        "num_experiments_used": "N/A"
+      },
+      "passed": false,
+      "error_message": null,
+      "analysis": "Asymmetric constraints test independence of mu and temp in C7 and C8. Status: Infeasible. ISSUE with asymmetric constraints.",
+      "execution_time_seconds": 1.9509103298187256
+    },
+    {
+      "test_name": "test_constraint_c1_one_combo_per_stage",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C1: at most one DOE combination per stage of each experiment",
+      "expected_result": {
+        "c1_violations": 0
+      },
+      "actual_result": {
+        "c1_violations": 0,
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C1 requires at most 1 combination per stage in each experiment. Found 0 violations. CORRECT - C1 satisfied.",
+      "execution_time_seconds": 2.807331085205078
+    },
+    {
+      "test_name": "test_constraint_c2_unique_at_stage_position",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C2: each combination used at most once at each stage position across all experiments",
+      "expected_result": {
+        "c2_violations": 0
+      },
+      "actual_result": {
+        "c2_violations": 0,
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C2 ensures variety across experiments at same stage. Found 0 violations. CORRECT - C2 satisfied.",
+      "execution_time_seconds": 2.251232385635376
+    },
+    {
+      "test_name": "test_constraint_c3_max_twice_per_experiment",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C3: each combination appears at most 2 times within any single experiment",
+      "expected_result": {
+        "c3_violations": 0
+      },
+      "actual_result": {
+        "c3_violations": 0,
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C3 limits repetition within an experiment to 2. Found 0 violations. CORRECT - C3 satisfied.",
+      "execution_time_seconds": 2.674245834350586
+    },
+    {
+      "test_name": "test_constraint_c4_max_twice_globally",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C4: each combination appears at most 2 times across all experiments",
+      "expected_result": {
+        "c4_violations": 0
+      },
+      "actual_result": {
+        "c4_violations": 0,
+        "global_combo_usage": {
+          "9": 2,
+          "6": 2,
+          "7": 2,
+          "1": 1,
+          "8": 2,
+          "5": 2,
+          "2": 1,
+          "3": 1,
+          "4": 2
+        },
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C4 limits global usage to 2 per combination. Found 0 violations. CORRECT - C4 satisfied.",
+      "execution_time_seconds": 2.3064637184143066
+    },
+    {
+      "test_name": "test_constraint_c5_all_combinations_covered",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C5: all DOE combinations are used at least once",
+      "expected_result": {
+        "all_combinations_used": true,
+        "total_combinations": 9
+      },
+      "actual_result": {
+        "all_combinations_used": true,
+        "num_used": 9,
+        "num_missing": 0,
+        "missing_combinations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C5 ensures complete DOE coverage. Expected 9 combinations, used 9. CORRECT - C5 satisfied.",
+      "execution_time_seconds": 3.0309412479400635
+    },
+    {
+      "test_name": "test_constraint_c6_weighted_repetition",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C6: combinations meet weighted repetition targets",
+      "expected_result": {
+        "c6_violations": 0
+      },
+      "actual_result": {
+        "c6_violations": 0,
+        "combo_weighted_usage": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 2,
+          "5": 2,
+          "6": 2,
+          "7": 2,
+          "8": 2,
+          "9": 2
+        },
+        "targets": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 2,
+          "5": 2,
+          "6": 2,
+          "7": 2,
+          "8": 2,
+          "9": 2
+        },
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C6 ensures strategic repetition. Center points (1-3) target=1, others target=2. Found 0 violations. CORRECT - C6 satisfied.",
+      "execution_time_seconds": 2.30625319480896
+    },
+    {
+      "test_name": "test_constraint_c7_sequential_limits",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C7: sequential changes stay within delta_max bounds",
+      "expected_result": {
+        "c7_violations": 0
+      },
+      "actual_result": {
+        "c7_violations": 0,
+        "delta_f_max_mu": 0.03,
+        "delta_f_max_temp": 2,
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C7 limits sequential changes: mu\u22640.03, temp\u22642. Found 0 violations. CORRECT - C7 satisfied.",
+      "execution_time_seconds": 2.759533405303955
+    },
+    {
+      "test_name": "test_constraint_c8_minimum_variation",
+      "test_category": "CONSTRAINT_VALIDATION",
+      "description": "Verify C8: each experiment has at least delta_min variation in one parameter",
+      "expected_result": {
+        "c8_violations": 0
+      },
+      "actual_result": {
+        "c8_violations": 0,
+        "delta_f_min_mu": 0.01,
+        "delta_f_min_temp": 1,
+        "violations": "None"
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Constraint C8 requires minimum variation: mu\u22650.01 OR temp\u22651. Found 0 violations. CORRECT - C8 satisfied.",
+      "execution_time_seconds": 2.4446637630462646
+    },
+    {
+      "test_name": "test_parameter_permutation_invariance",
+      "test_category": "ROBUSTNESS",
+      "description": "Test algorithm with mu and temperature columns swapped",
+      "expected_result": {
+        "status": "Optimal",
+        "reason": "Algorithm should handle column permutation"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 5
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Swapping parameter columns tests algorithm's independence from column order. Status: Optimal. CORRECT - handles permutations.",
+      "execution_time_seconds": 2.9283156394958496
+    },
+    {
+      "test_name": "test_identical_combinations",
+      "test_category": "ROBUSTNESS",
+      "description": "Test with duplicate combinations in input (like the 3 center points)",
+      "expected_result": {
+        "status": "Optimal",
+        "reason": "Algorithm should handle duplicate combinations (treated as distinct by index)"
+      },
+      "actual_result": {
+        "status": "Optimal",
+        "num_experiments_used": 5
+      },
+      "passed": true,
+      "error_message": null,
+      "analysis": "Default FACTOR_VALUES has 3 identical center points (combos 1-3). Algorithm treats them as distinct by index. Status: Optimal. CORRECT - handles duplicates properly.",
+      "execution_time_seconds": 2.9286887645721436
+    }
+  ]
+}

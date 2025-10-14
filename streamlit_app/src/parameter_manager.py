@@ -35,8 +35,6 @@ class ParameterManager:
 
     def add_parameter(self, name: str, units: str, values: List[float]):
         """Add a parameter to the manager."""
-        if not name or not values:
-            raise ValueError("Parameter must have a name and at least one value")
         self.parameters.append(Parameter(name, units, values))
 
     def remove_parameter(self, index: int):

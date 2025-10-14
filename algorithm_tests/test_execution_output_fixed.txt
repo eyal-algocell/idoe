@@ -1,0 +1,63 @@
+================================================================================
+ALGORITHMIC TEST SUITE FOR iDoE OPTIMIZER
+================================================================================
+
+Running NORMAL CASES...
+  ✓ test_standard_optimization: PASS
+  ✓ test_solution_uses_all_combinations: PASS
+  ✓ test_solution_minimizes_experiments: PASS
+
+Running EDGE CASES - Constraint Boundaries...
+  ✓ test_minimal_delta_constraints: PASS
+  ✓ test_maximal_delta_constraints: PASS
+  ✓ test_zero_delta_min_constraints: PASS
+  ✓ test_very_tight_delta_constraints: PASS
+
+Running EDGE CASES - Problem Size...
+/app/algorithm_tests/../src/optimizer.py:132: UserWarning: Problem has only 1 combination(s). C8 (minimum variation) requires at least 2-3 combinations to be effective. Automatically setting skip_c8=True for better feasibility.
+  warnings.warn(
+  ✓ test_minimal_problem_single_combination: FAIL
+/app/algorithm_tests/../src/optimizer.py:132: UserWarning: Problem has only 2 combination(s). C8 (minimum variation) requires at least 2-3 combinations to be effective. Automatically setting skip_c8=True for better feasibility.
+  warnings.warn(
+  ✓ test_two_combinations_only: FAIL
+  ✓ test_large_number_of_combinations: PASS
+
+Running EDGE CASES - Infeasibility Detection...
+  ✓ test_impossible_constraints: FAIL
+  ✓ test_contradictory_min_max_deltas: FAIL
+
+Running HARD CASES - Complex Constraints...
+/app/algorithm_tests/../src/optimizer.py:102: UserWarning: All combinations are identical. C8 (minimum variation) cannot be satisfied. Automatically setting skip_c8=True.
+  warnings.warn(
+/app/algorithm_tests/../src/optimizer.py:142: UserWarning: C8 (minimum variation constraint) is disabled. Experiments may not have meaningful parameter variation.
+  warnings.warn(
+  ✓ test_all_center_points: FAIL
+  ✓ test_extreme_value_combinations: PASS
+  ✓ test_one_stage_problems: PASS
+  ✓ test_asymmetric_constraints: FAIL
+
+Running CONSTRAINT VALIDATION TESTS...
+  ✓ test_constraint_c1_one_combo_per_stage: PASS
+  ✓ test_constraint_c2_unique_at_stage_position: PASS
+  ✓ test_constraint_c3_max_twice_per_experiment: PASS
+  ✓ test_constraint_c4_max_twice_globally: PASS
+  ✓ test_constraint_c5_all_combinations_covered: PASS
+  ✓ test_constraint_c6_weighted_repetition: PASS
+  ✓ test_constraint_c7_sequential_limits: PASS
+  ✓ test_constraint_c8_minimum_variation: PASS
+
+Running ROBUSTNESS TESTS...
+  ✓ test_parameter_permutation_invariance: PASS
+  ✓ test_identical_combinations: PASS
+
+
+================================================================================
+TEST SUITE SUMMARY
+================================================================================
+Total tests: 26
+Passed: 20
+Failed: 6
+Success rate: 76.9%
+
+Detailed results saved to: algorithm_tests/test_results.json
+

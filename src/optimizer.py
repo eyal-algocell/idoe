@@ -34,7 +34,8 @@ class IDOEOptimizer:
         delta_f_max_mu: float = DELTA_F_MAX_MU,
         delta_f_max_temp: float = DELTA_F_MAX_TEMP,
         delta_f_min_mu: float = DELTA_F_MIN_MU,
-        delta_f_min_temp: float = DELTA_F_MIN_TEMP
+        delta_f_min_temp: float = DELTA_F_MIN_TEMP,
+        skip_c8: bool = False
     ):
         """
         Initialize the optimizer with problem parameters.
@@ -46,6 +47,7 @@ class IDOEOptimizer:
             delta_f_max_temp: Maximum allowed temperature change between stages
             delta_f_min_mu: Minimum required mu_set change per experiment
             delta_f_min_temp: Minimum required temperature change per experiment
+            skip_c8: If True, skip C8 minimum variation constraint (useful for small problems)
         """
         self.factor_values = factor_values if factor_values is not None else FACTOR_VALUES
         self.num_combinations = len(self.factor_values)
@@ -57,11 +59,91 @@ class IDOEOptimizer:
         self.delta_f_max_temp = delta_f_max_temp
         self.delta_f_min_mu = delta_f_min_mu
         self.delta_f_min_temp = delta_f_min_temp
+        self.skip_c8 = skip_c8
 
         self.problem: Optional[pulp.LpProblem] = None
         self.x: Optional[dict] = None
         self.z: Optional[dict] = None
         self.q: Optional[dict] = None
+
+        # Validate inputs and auto-adjust settings
+        self._validate_inputs()
+
+    def _validate_inputs(self) -> None:
+        """
+        Validate input parameters and auto-adjust settings for edge cases.
+
+        Raises:
+            ValueError: If inputs are invalid or contradictory
+        """
+        import warnings
+
+        # Check for contradictory delta constraints
+        if self.delta_f_max_mu < self.delta_f_min_mu:
+            raise ValueError(
+                f"delta_f_max_mu ({self.delta_f_max_mu}) must be >= delta_f_min_mu ({self.delta_f_min_mu})"
+            )
+        if self.delta_f_max_temp < self.delta_f_min_temp:
+            raise ValueError(
+                f"delta_f_max_temp ({self.delta_f_max_temp}) must be >= delta_f_min_temp ({self.delta_f_min_temp})"
+            )
+
+        # Check minimum problem size
+        if self.num_combinations < 1:
+            raise ValueError("Must have at least 1 combination")
+
+        # Check for identical or too-close combinations (C8 validation)
+        if not self.skip_c8 and self.num_combinations >= 2:
+            # Get unique combinations
+            unique_combos = np.unique(self.factor_values, axis=0)
+
+            if len(unique_combos) == 1:
+                # All combinations are identical
+                warnings.warn(
+                    "All combinations are identical. C8 (minimum variation) cannot be satisfied. "
+                    "Automatically setting skip_c8=True.",
+                    UserWarning
+                )
+                self.skip_c8 = True
+            elif len(unique_combos) < self.num_combinations:
+                # Some duplicates exist - check if enough variation is possible
+                can_satisfy_delta_min = False
+                for i in range(len(unique_combos)):
+                    for j in range(i + 1, len(unique_combos)):
+                        diff_mu = abs(unique_combos[i, 0] - unique_combos[j, 0])
+                        diff_temp = abs(unique_combos[i, 1] - unique_combos[j, 1])
+                        if diff_mu >= self.delta_f_min_mu or diff_temp >= self.delta_f_min_temp:
+                            can_satisfy_delta_min = True
+                            break
+                    if can_satisfy_delta_min:
+                        break
+
+                if not can_satisfy_delta_min:
+                    warnings.warn(
+                        f"No pair of unique combinations differs by at least delta_min "
+                        f"(mu: {self.delta_f_min_mu}, temp: {self.delta_f_min_temp}). "
+                        "C8 (minimum variation) cannot be satisfied. Automatically setting skip_c8=True.",
+                        UserWarning
+                    )
+                    self.skip_c8 = True
+
+        # Auto-skip C8 for very small problems
+        if not self.skip_c8 and self.num_combinations < 3:
+            warnings.warn(
+                f"Problem has only {self.num_combinations} combination(s). "
+                "C8 (minimum variation) requires at least 2-3 combinations to be effective. "
+                "Automatically setting skip_c8=True for better feasibility.",
+                UserWarning
+            )
+            self.skip_c8 = True
+
+        # Warn if skipping C8
+        if self.skip_c8 and self.num_combinations >= 3:
+            warnings.warn(
+                "C8 (minimum variation constraint) is disabled. "
+                "Experiments may not have meaningful parameter variation.",
+                UserWarning
+            )
 
     def _create_decision_variables(self) -> None:
         """Create binary decision variables for the MILP problem."""
@@ -274,7 +356,8 @@ class IDOEOptimizer:
         self._add_constraint_c5()
         self._add_constraint_c6()
         self._add_constraint_c7()
-        self._add_constraint_c8()
+        if not self.skip_c8:
+            self._add_constraint_c8()
 
     def _extract_results(self) -> OptimizationResult:
         """Extract and format the optimization results."""
