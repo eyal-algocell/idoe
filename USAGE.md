@@ -117,6 +117,59 @@ docker-compose up
 docker-compose down
 ```
 
+### Running the Streamlit Web App
+
+The iDoE Planner includes an interactive web interface built with Streamlit for easy experiment planning.
+
+#### Build the Streamlit Docker Image
+
+```bash
+# Build the Streamlit app image
+cd streamlit_app && docker build -f Dockerfile -t idoe-streamlit .
+```
+
+#### Run the Streamlit App Locally
+
+```bash
+# Run the Streamlit app and expose it on port 8501
+docker run --rm -p 8501:8501 idoe-streamlit
+
+# Or run in detached mode (background)
+docker run -d --rm -p 8501:8501 --name idoe-app idoe-streamlit
+```
+
+#### Access the Web Interface
+
+Once the container is running, open your browser and navigate to:
+
+```
+http://localhost:8501
+```
+
+The web interface allows you to:
+- Configure DOE parameters (factor values, stage counts, delta constraints)
+- Run optimizations with custom settings
+- Visualize experiment plans
+- Download results as JSON or Excel files
+- View interactive charts and analytics
+
+#### Stop the Streamlit App
+
+```bash
+# If running in detached mode, stop the container:
+docker stop idoe-app
+
+# If running in foreground, press Ctrl+C
+```
+
+#### Troubleshooting Streamlit
+
+If you can't access the app at localhost:8501:
+1. Check that port 8501 is not already in use: `netstat -an | grep 8501` (Linux/Mac) or `netstat -an | findstr 8501` (Windows)
+2. Verify the container is running: `docker ps`
+3. Check container logs: `docker logs idoe-streamlit` or `docker logs idoe-app`
+4. Try a different port: `docker run --rm -p 8502:8501 idoe-streamlit` and access at `http://localhost:8502`
+
 ## Output Format
 
 The optimizer produces a JSON file with the following structure:
