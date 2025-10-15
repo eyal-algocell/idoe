@@ -2,7 +2,9 @@
 
 import pytest
 import numpy as np
-from src.parameter_manager import Parameter, ParameterManager, create_example_parameters
+import pandas as pd
+import io
+from src.parameter_manager import Parameter, ParameterManager, create_example_parameters, generate_example_csv
 
 
 class TestParameter:
@@ -218,3 +220,186 @@ class TestParameterManager:
 
         is_valid, _ = manager.validate()
         assert is_valid
+
+
+class TestCSVFunctionality:
+    """Test CSV import/export functionality."""
+
+    def test_generate_example_csv(self):
+        """Test that example CSV is generated correctly."""
+        csv_string = generate_example_csv()
+
+        assert csv_string is not None
+        assert "Combo #" in csv_string
+        assert "Temperature" in csv_string
+        assert "μ_set" in csv_string
+
+        # Verify it can be read back as DataFrame
+        df = pd.read_csv(io.StringIO(csv_string))
+        assert len(df) == 15  # 3 temps x 5 mu values
+        assert len(df.columns) == 3  # Combo #, Temperature, μ_set
+
+    def test_load_from_dataframe_with_index_column(self):
+        """Test loading parameters from DataFrame with index column."""
+        csv_data = """Combo #,Temperature (°C),pH
+1,29.0,6.5
+2,29.0,7.0
+3,31.0,6.5
+4,31.0,7.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert success
+        assert error_msg == ""
+        assert len(manager.parameters) == 2
+        assert manager.parameters[0].name == "Temperature"
+        assert manager.parameters[0].units == "°C"
+        assert manager.parameters[0].values == [29.0, 31.0]
+        assert manager.parameters[1].name == "pH"
+        assert manager.parameters[1].units == ""
+        assert manager.parameters[1].values == [6.5, 7.0]
+
+    def test_load_from_dataframe_without_index_column(self):
+        """Test loading parameters from DataFrame without index column."""
+        csv_data = """Temperature (°C),pH
+29.0,6.5
+29.0,7.0
+31.0,6.5
+31.0,7.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert success
+        assert error_msg == ""
+        assert len(manager.parameters) == 2
+        assert manager.parameters[0].name == "Temperature"
+        assert manager.parameters[0].units == "°C"
+        assert manager.parameters[0].values == [29.0, 31.0]
+
+    def test_load_from_dataframe_case_insensitive_index(self):
+        """Test that index column detection is case-insensitive."""
+        csv_data = """combo #,Temperature (°C),pH
+1,29.0,6.5
+2,31.0,7.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert success
+        assert len(manager.parameters) == 2
+        # Should skip the "combo #" column
+
+    def test_load_from_dataframe_no_units(self):
+        """Test loading parameters without units."""
+        csv_data = """Combo #,Temperature,pH
+1,29.0,6.5
+2,31.0,7.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert success
+        assert manager.parameters[0].units == ""
+        assert manager.parameters[1].units == ""
+
+    def test_load_from_dataframe_replaces_existing(self):
+        """Test that loading CSV replaces existing parameters."""
+        manager = ParameterManager()
+        manager.add_parameter("OldParam", "unit", [1.0, 2.0])
+
+        csv_data = """Temperature (°C)
+29.0
+31.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert success
+        assert len(manager.parameters) == 1
+        assert manager.parameters[0].name == "Temperature"
+
+    def test_load_from_dataframe_invalid_non_numeric(self):
+        """Test error handling for non-numeric values."""
+        csv_data = """Temperature (°C)
+29.0
+hot
+31.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert not success
+        assert "non-numeric" in error_msg.lower()
+
+    def test_load_from_dataframe_empty_column(self):
+        """Test error handling for empty parameter column."""
+        csv_data = """Temperature (°C),pH
+
+
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert not success
+        assert "no values" in error_msg.lower()
+
+    def test_load_from_dataframe_three_parameters(self):
+        """Test loading with three parameters."""
+        csv_data = """Combo #,Temp (°C),pH,DO (%)
+1,29.0,6.5,20.0
+2,29.0,6.5,40.0
+3,29.0,7.0,20.0
+4,29.0,7.0,40.0
+5,31.0,6.5,20.0
+6,31.0,6.5,40.0
+7,31.0,7.0,20.0
+8,31.0,7.0,40.0
+"""
+        df = pd.read_csv(io.StringIO(csv_data))
+        manager = ParameterManager()
+
+        success, error_msg = manager.load_from_dataframe(df)
+
+        assert success
+        assert len(manager.parameters) == 3
+        assert manager.get_num_combinations() == 8
+
+    def test_roundtrip_csv_export_import(self):
+        """Test that exporting and importing CSV preserves parameters."""
+        # Create original manager
+        original = ParameterManager()
+        original.add_parameter("Temperature", "°C", [29.0, 31.0, 33.0])
+        original.add_parameter("pH", "", [6.5, 7.0])
+
+        # Export to CSV
+        df_exported = original.get_combinations_dataframe()
+        csv_string = df_exported.to_csv()
+
+        # Import into new manager
+        df_imported = pd.read_csv(io.StringIO(csv_string))
+        new_manager = ParameterManager()
+        success, error_msg = new_manager.load_from_dataframe(df_imported)
+
+        # Verify
+        assert success
+        assert len(new_manager.parameters) == len(original.parameters)
+        assert new_manager.get_num_combinations() == original.get_num_combinations()
+
+        for orig_param, new_param in zip(original.parameters, new_manager.parameters):
+            assert orig_param.name == new_param.name
+            assert orig_param.units == new_param.units
+            assert orig_param.values == new_param.values

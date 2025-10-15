@@ -7,7 +7,7 @@ An easy, no-code app for planning intensified Design of Experiments (iDoE).
 import streamlit as st
 import numpy as np
 import pandas as pd
-from src.parameter_manager import ParameterManager, create_example_parameters
+from src.parameter_manager import ParameterManager, create_example_parameters, generate_example_csv
 from src.optimizer_wrapper import IDOEOptimizerWrapper, Constraints
 from src.visualizations import (
     plot_usage_heatmap,
@@ -39,6 +39,8 @@ def reset_app():
     st.session_state.param_manager = ParameterManager()
     st.session_state.optimization_result = None
     st.session_state.show_results = False
+    if 'last_uploaded_file' in st.session_state:
+        del st.session_state.last_uploaded_file
 
 
 def load_example():
@@ -193,6 +195,57 @@ with st.expander("➕ Add New Parameter", expanded=len(param_manager.parameters)
                 st.error("Invalid values. Please enter numbers separated by commas.")
         else:
             st.error("Please provide parameter name and values.")
+
+# CSV Upload option
+with st.expander("📤 Upload Combinations from CSV"):
+    st.markdown("""
+    Upload a CSV file with your experiment combinations. The file should have:
+    - First column: Combo # (optional)
+    - Other columns: Parameter names with units in parentheses, e.g., "Temperature (°C)"
+    - Each row: One combination of parameter values
+    """)
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        uploaded_file = st.file_uploader(
+            "Choose a CSV file",
+            type=['csv'],
+            key="csv_upload"
+        )
+
+    with col2:
+        # Download example CSV
+        example_csv = generate_example_csv()
+        st.download_button(
+            label="📥 Download Example CSV",
+            data=example_csv,
+            file_name="example_combinations.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+    if uploaded_file is not None:
+        # Check if this is a new file upload (not a rerun with the same file)
+        file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+        if 'last_uploaded_file' not in st.session_state or st.session_state.last_uploaded_file != file_id:
+            try:
+                df = pd.read_csv(uploaded_file)
+                success, error_msg = st.session_state.param_manager.load_from_dataframe(df)
+
+                if success:
+                    st.session_state.last_uploaded_file = file_id
+                    st.session_state.optimization_result = None
+                    st.session_state.show_results = False
+                    st.success(f"✅ Successfully loaded {len(st.session_state.param_manager.parameters)} parameters!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ {error_msg}")
+            except Exception as e:
+                st.error(f"❌ Error reading CSV file: {str(e)}")
+        else:
+            # File already processed, just show success message
+            st.info(f"✅ CSV file loaded with {len(st.session_state.param_manager.parameters)} parameters")
 
 # Preview combinations
 if len(param_manager.parameters) > 0:
@@ -590,7 +643,6 @@ if st.session_state.show_results and st.session_state.optimization_result:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    <p>iDoE Planner v1.0 | Built with Streamlit |
-    Based on von Stosch & Willis (2017)</p>
+    <p>iDoE Planner v1.0 | Built with Streamlit</p>
 </div>
 """, unsafe_allow_html=True)

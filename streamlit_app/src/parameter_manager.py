@@ -4,6 +4,7 @@ import itertools
 from typing import List, Dict, Tuple
 import numpy as np
 import pandas as pd
+import io
 
 
 class Parameter:
@@ -132,6 +133,61 @@ class ParameterManager:
 
         return True, ""
 
+    def load_from_dataframe(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """
+        Load combinations from a DataFrame and extract parameters.
+
+        Expected format:
+        - First column is ignored (Combo #)
+        - Other columns: "Parameter Name (Unit)" or just "Parameter Name"
+        - Each row is a combination
+
+        Args:
+            df: DataFrame with combinations
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        try:
+            # Clear existing parameters
+            self.clear()
+
+            # Skip first column if it looks like an index
+            data_df = df.copy()
+            if data_df.columns[0].lower() in ['combo #', 'combo', '#', 'index']:
+                data_df = data_df.iloc[:, 1:]
+
+            # Parse parameter names and units from columns
+            for col in data_df.columns:
+                col_str = str(col)
+
+                # Extract name and units
+                if '(' in col_str and ')' in col_str:
+                    name = col_str[:col_str.index('(')].strip()
+                    units = col_str[col_str.index('(') + 1:col_str.index(')')].strip()
+                else:
+                    name = col_str.strip()
+                    units = ""
+
+                # Get unique values for this parameter
+                values = sorted(data_df[col].dropna().unique())
+
+                if len(values) == 0:
+                    return False, f"Parameter '{name}' has no values"
+
+                # Convert to float
+                try:
+                    values = [float(v) for v in values]
+                except ValueError:
+                    return False, f"Parameter '{name}' contains non-numeric values"
+
+                self.add_parameter(name, units, values)
+
+            return True, ""
+
+        except Exception as e:
+            return False, f"Error loading CSV: {str(e)}"
+
 
 def create_example_parameters() -> ParameterManager:
     """Create example parameter set (Temperature and μ_set)."""
@@ -139,3 +195,15 @@ def create_example_parameters() -> ParameterManager:
     manager.add_parameter("Temperature", "°C", [29.0, 31.0, 33.0])
     manager.add_parameter("μ_set", "h⁻¹", [0.11, 0.1225, 0.135, 0.1475, 0.16])
     return manager
+
+
+def generate_example_csv() -> str:
+    """
+    Generate an example CSV string showing the expected format.
+
+    Returns:
+        CSV string with example data
+    """
+    manager = create_example_parameters()
+    df = manager.get_combinations_dataframe()
+    return df.to_csv()

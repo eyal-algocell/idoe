@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 from typing import Dict, List, Tuple
 
 
@@ -210,6 +211,7 @@ def plot_run_timeline(
 ) -> go.Figure:
     """
     Create timeline plot showing parameter profiles for a single run.
+    Each parameter has its own Y-axis in a subplot.
 
     Args:
         run_idx: Run index
@@ -228,12 +230,23 @@ def plot_run_timeline(
         selected_params = list(range(len(param_names)))
 
     per_stage_hours = total_hours / num_stages
+    n_params = len(selected_params)
 
-    fig = go.Figure()
+    # Create subplots with shared x-axis
+    fig = make_subplots(
+        rows=n_params,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        subplot_titles=[
+            f"{param_names[p_idx]}{' (' + param_units[p_idx] + ')' if param_units[p_idx] else ''}"
+            for p_idx in selected_params
+        ]
+    )
 
     colors = px.colors.qualitative.Plotly
 
-    for p_idx in selected_params:
+    for subplot_idx, p_idx in enumerate(selected_params):
         # Build step function
         time_points = []
         param_values = []
@@ -250,22 +263,35 @@ def plot_run_timeline(
         if param_units[p_idx]:
             param_label += f" ({param_units[p_idx]})"
 
-        fig.add_trace(go.Scatter(
-            x=time_points,
-            y=param_values,
-            mode='lines',
-            line=dict(width=3, color=colors[p_idx % len(colors)]),
-            name=param_label,
-            hovertemplate=f'{param_label}<br>Time: %{{x:.1f}} h<br>Value: %{{y:.4f}}<extra></extra>'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=time_points,
+                y=param_values,
+                mode='lines',
+                line=dict(width=3, color=colors[p_idx % len(colors)]),
+                name=param_label,
+                hovertemplate=f'{param_label}<br>Time: %{{x:.1f}} h<br>Value: %{{y:.4f}}<extra></extra>',
+                showlegend=False
+            ),
+            row=subplot_idx + 1,
+            col=1
+        )
 
+        # Update y-axis label for each subplot
+        fig.update_yaxes(
+            title_text=param_label,
+            row=subplot_idx + 1,
+            col=1
+        )
+
+    # Update x-axis label only for the bottom subplot
+    fig.update_xaxes(title_text="Time (h)", row=n_params, col=1)
+
+    # Update overall layout
     fig.update_layout(
-        title=f"Run {run_idx+1}: Parameter Timeline",
-        xaxis_title="Time (h)",
-        yaxis_title="Parameter Values",
-        height=400,
-        hovermode='x unified',
-        legend=dict(x=1.02, y=1)
+        title_text=f"Run {run_idx+1}: Parameter Timeline",
+        height=max(400, 200 * n_params),
+        hovermode='x unified'
     )
 
     return fig
